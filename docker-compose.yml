@@ -1,0 +1,100 @@
+version: '3.8'
+
+networks:
+  pqrs-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  n8n-data:
+  laravel-storage:
+
+services:
+
+  # ─── NGINX ─────────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: pqrs-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./laravel-app:/var/www/html:ro
+    depends_on:
+      - app
+    networks:
+      - pqrs-network
+
+  # ─── LARAVEL (PHP-FPM) ─────────────────────────────────
+  app:
+    build:
+      context: ./laravel-app
+      dockerfile: Dockerfile
+    container_name: pqrs-app
+    restart: always
+    environment:
+      APP_NAME: "${APP_NAME}"
+      APP_ENV: "${APP_ENV}"
+      APP_KEY: "${APP_KEY}"
+      APP_DEBUG: "${APP_DEBUG}"
+      APP_URL: "${APP_URL}"
+      DB_CONNECTION: "${DB_CONNECTION}"
+      DB_HOST: "${DB_HOST}"
+      DB_PORT: "${DB_PORT}"
+      DB_DATABASE: "${DB_DATABASE}"
+      DB_USERNAME: "${DB_USERNAME}"
+      DB_PASSWORD: "${DB_PASSWORD}"
+      SESSION_DRIVER: "${SESSION_DRIVER}"
+      QUEUE_CONNECTION: "${QUEUE_CONNECTION}"
+      OPENAI_API_KEY: "${OPENAI_API_KEY}"
+      N8N_WEBHOOK_URL: "http://n8n:5678"
+    volumes:
+      - ./laravel-app:/var/www/html
+      - laravel-storage:/var/www/html/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - pqrs-network
+
+  # ─── POSTGRESQL ────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: pqrs-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: "${DB_DATABASE}"
+      POSTGRES_USER: "${DB_USERNAME}"
+      POSTGRES_PASSWORD: "${DB_PASSWORD}"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_DATABASE}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pqrs-network
+
+  # ─── N8N ───────────────────────────────────────────────
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: pqrs-n8n
+    restart: always
+    ports:
+      - "5678:5678"
+    environment:
+      N8N_HOST: "${N8N_HOST}"
+      N8N_PORT: "${N8N_PORT}"
+      N8N_PROTOCOL: "${N8N_PROTOCOL}"
+      N8N_BASIC_AUTH_ACTIVE: "${N8N_BASIC_AUTH_ACTIVE}"
+      N8N_BASIC_AUTH_USER: "${N8N_BASIC_AUTH_USER}"
+      N8N_BASIC_AUTH_PASSWORD: "${N8N_BASIC_AUTH_PASSWORD}"
+      WEBHOOK_URL: "${WEBHOOK_URL}"
+      GENERIC_TIMEZONE: "America/Bogota"
+    volumes:
+      - n8n-data:/home/node/.n8n
+    networks:
+      - pqrs-network
