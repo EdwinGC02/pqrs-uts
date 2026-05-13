@@ -26,13 +26,6 @@ if [ ! -f "$WORKDIR/.env" ]; then
     cp "$WORKDIR/.env.example" "$WORKDIR/.env" 2>/dev/null || true
 fi
 
-echo "📦 Instalando dependencias PHP..."
-composer install --no-interaction --quiet
-
-echo "🔑 Generando APP_KEY si no está configurada..."
-grep -q "^APP_KEY=$" "$WORKDIR/.env" 2>/dev/null && php artisan key:generate --force
-grep -q "^APP_KEY=base64:" "$WORKDIR/.env" 2>/dev/null || php artisan key:generate --force
-
 echo "🏗️  Creando directorios de storage..."
 mkdir -p storage/framework/cache/data \
          storage/framework/sessions \
@@ -43,6 +36,15 @@ mkdir -p storage/framework/cache/data \
 echo "🔒 Ajustando permisos..."
 chown -R www-data:www-data "$WORKDIR"
 chmod -R 775 storage bootstrap/cache
+
+echo "📦 Instalando dependencias PHP (sin scripts)..."
+composer install --no-interaction --no-scripts --quiet
+
+echo "🔑 Generando APP_KEY si no está configurada..."
+php artisan key:generate --force --no-interaction 2>/dev/null || true
+
+echo "📦 Registrando paquetes Laravel..."
+composer run-script post-autoload-dump --no-interaction 2>/dev/null || true
 
 echo "📦 Instalando dependencias JS..."
 if [ ! -d "node_modules" ]; then
