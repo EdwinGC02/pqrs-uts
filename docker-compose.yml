@@ -15,7 +15,7 @@ services:
   nginx:
     image: nginx:alpine
     container_name: pqrs-nginx
-    restart: always
+    restart: unless-stopped
     ports:
       - "80:80"
       - "8080:8080"
@@ -33,22 +33,10 @@ services:
       context: ./laravel-app
       dockerfile: Dockerfile
     container_name: pqrs-app
-    restart: always
+    restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      APP_NAME: "${APP_NAME}"
-      APP_ENV: "${APP_ENV}"
-      APP_KEY: "${APP_KEY}"
-      APP_DEBUG: "${APP_DEBUG}"
-      APP_URL: "${APP_URL}"
-      DB_CONNECTION: "${DB_CONNECTION}"
-      DB_HOST: "${DB_HOST}"
-      DB_PORT: "${DB_PORT}"
-      DB_DATABASE: "${DB_DATABASE}"
-      DB_USERNAME: "${DB_USERNAME}"
-      DB_PASSWORD: "${DB_PASSWORD}"
-      SESSION_DRIVER: "${SESSION_DRIVER}"
-      QUEUE_CONNECTION: "${QUEUE_CONNECTION}"
-      OPENAI_API_KEY: "${OPENAI_API_KEY}"
       N8N_WEBHOOK_URL: "http://n8n:5678"
     volumes:
       - ./laravel-app:/var/www/html
@@ -63,7 +51,7 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: pqrs-postgres
-    restart: always
+    restart: unless-stopped
     environment:
       POSTGRES_DB: "${DB_DATABASE}"
       POSTGRES_USER: "${DB_USERNAME}"
@@ -82,17 +70,18 @@ services:
   n8n:
     image: n8nio/n8n:latest
     container_name: pqrs-n8n
-    restart: always
+    restart: unless-stopped
     ports:
       - "5678:5678"
     environment:
-      N8N_HOST: "${N8N_HOST}"
-      N8N_PORT: "${N8N_PORT}"
-      N8N_PROTOCOL: "${N8N_PROTOCOL}"
-      N8N_BASIC_AUTH_ACTIVE: "${N8N_BASIC_AUTH_ACTIVE}"
-      N8N_BASIC_AUTH_USER: "${N8N_BASIC_AUTH_USER}"
-      N8N_BASIC_AUTH_PASSWORD: "${N8N_BASIC_AUTH_PASSWORD}"
-      WEBHOOK_URL: "${WEBHOOK_URL}"
+      N8N_HOST: "${N8N_HOST:-0.0.0.0}"
+      N8N_PORT: "${N8N_PORT:-5678}"
+      N8N_PROTOCOL: "${N8N_PROTOCOL:-http}"
+      N8N_BASIC_AUTH_ACTIVE: "${N8N_BASIC_AUTH_ACTIVE:-true}"
+      N8N_BASIC_AUTH_USER: "${N8N_BASIC_AUTH_USER:-admin}"
+      N8N_BASIC_AUTH_PASSWORD: "${N8N_BASIC_AUTH_PASSWORD:-admin123}"
+      N8N_SECURE_COOKIE: "false"
+      WEBHOOK_URL: "${WEBHOOK_URL:-http://localhost:5678}"
       GENERIC_TIMEZONE: "America/Bogota"
     volumes:
       - n8n-data:/home/node/.n8n
