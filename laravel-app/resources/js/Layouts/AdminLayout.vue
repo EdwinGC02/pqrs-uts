@@ -5,6 +5,23 @@ import { Link, router, usePage } from '@inertiajs/vue3'
 const page = usePage()
 const sidebarOpen = ref(false)
 
+/** Pathname del href de Ziggy para comparar con `$page.url` sin usar `window`. */
+function pathFromHref(href) {
+  if (!href) return ''
+  const clean = href.split('?')[0]
+  if (clean.startsWith('/')) return clean
+  try {
+    return new URL(clean).pathname
+  } catch {
+    return clean.replace(/^https?:\/\/[^/]+/i, '') || ''
+  }
+}
+
+function isNavItemActive(href) {
+  const path = pathFromHref(href)
+  return path !== '' && page.url.startsWith(path)
+}
+
 const navItems = [
   { name: 'Dashboard', href: route('admin.dashboard'), icon: '📊' },
   { name: 'Solicitudes', href: route('admin.solicitudes'), icon: '📋' },
@@ -58,7 +75,7 @@ function logout() {
             :key="item.href"
             :href="item.href"
             class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition"
-            :class="{ 'bg-blue-50 text-blue-700 font-medium': $page.url.startsWith(item.href.replace(window.location.origin, '')) }"
+            :class="{ 'bg-blue-50 text-blue-700 font-medium': isNavItemActive(item.href) }"
             @click="sidebarOpen = false"
           >
             <span class="text-lg">{{ item.icon }}</span>

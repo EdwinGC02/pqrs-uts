@@ -34,8 +34,11 @@ services:
       dockerfile: Dockerfile
     container_name: pqrs-app
     restart: unless-stopped
+    # Mismo archivo que Laravel (laravel-app/.env). El .env en la raíz solo
+    # sirve a Compose para ${DB_*} en otros servicios; si fuera env_file aquí,
+    # variables vacías (p. ej. APP_KEY=) pisan el .env de Laravel y falla el cifrado.
     env_file:
-      - .env
+      - laravel-app/.env
     environment:
       N8N_WEBHOOK_URL: "http://n8n:5678"
     volumes:
