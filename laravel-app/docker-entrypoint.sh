@@ -40,8 +40,18 @@ chmod -R 775 storage bootstrap/cache
 echo "📦 Instalando dependencias PHP (sin scripts)..."
 composer install --no-interaction --no-scripts --quiet
 
-echo "🔑 Generando APP_KEY si no está configurada..."
-php artisan key:generate --force --no-interaction 2>/dev/null || true
+echo "🔑 Generando APP_KEY..."
+# Si el entorno ya tiene APP_KEY vacía (inyectada por Docker), generamos la key,
+# la escribimos en .env y la exportamos explícitamente al proceso actual
+# para que PHP-FPM la herede (dotenv no sobreescribe vars ya definidas en el entorno).
+if [ -z "$APP_KEY" ]; then
+    php artisan key:generate --force --no-interaction
+    GENERATED_KEY=$(grep "^APP_KEY=" "$WORKDIR/.env" | cut -d'=' -f2-)
+    export APP_KEY="$GENERATED_KEY"
+    echo "   APP_KEY generada y exportada."
+else
+    echo "   APP_KEY ya está configurada."
+fi
 
 echo "📦 Registrando paquetes Laravel..."
 composer run-script post-autoload-dump --no-interaction 2>/dev/null || true
