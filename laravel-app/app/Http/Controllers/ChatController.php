@@ -35,12 +35,27 @@ class ChatController extends Controller
         $n8nUrl = env('N8N_WEBHOOK_URL', 'http://n8n:5678');
 
         try {
-            $response = Http::timeout(30)->post("{$n8nUrl}/webhook/pqrs-chat", [
-                'mensaje'    => $mensaje,
-                'historial'  => $historial,
-                'user_id'    => $user->id,
-                'user_name'  => $user->name,
-            ]);
+            $pqrsUsuario = $user->pqrs()
+    ->with('dependencia')
+    ->orderBy('created_at', 'desc')
+    ->take(5)
+    ->get()
+    ->map(fn($p) => [
+        'ticket'      => $p->numero_ticket,
+        'tipo'        => $p->tipo,
+        'asunto'      => $p->asunto,
+        'estado'      => $p->estado,
+        'dependencia' => $p->dependencia?->nombre ?? 'Sin asignar',
+        'fecha'       => $p->created_at->format('d/m/Y'),
+    ]);
+
+$response = Http::timeout(30)->post("{$n8nUrl}/webhook/pqrs-chat", [
+    'mensaje'      => $mensaje,
+    'historial'    => $historial,
+    'user_id'      => $user->id,
+    'user_name'    => $user->name,
+    'pqrs_usuario' => $pqrsUsuario,
+]);
 
             if (! $response->successful()) {
                 throw new \Exception('n8n respondió con error: '.$response->status());

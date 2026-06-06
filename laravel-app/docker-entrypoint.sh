@@ -65,7 +65,7 @@ echo "🔨 Compilando assets..."
 npm run build 2>&1 | tail -5
 
 echo "⏳ Esperando base de datos..."
-until php artisan migrate:status > /dev/null 2>&1; do
+until php -r "new PDO('pgsql:host='.(getenv('DB_HOST')?:'postgres').';dbname='.(getenv('DB_DATABASE')?:'pqrs_db'), getenv('DB_USERNAME')?:'pqrs_user', getenv('DB_PASSWORD')?:'');" > /dev/null 2>&1; do
     echo "   ...base de datos no disponible, reintentando en 3s"
     sleep 3
 done
